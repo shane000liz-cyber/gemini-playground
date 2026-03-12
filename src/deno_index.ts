@@ -89,9 +89,20 @@ async function handleRequest(req: Request): Promise<Response> {
   console.log('Request URL:', req.url);
 
   // WebSocket 处理
-  if (req.headers.get("Upgrade")?.toLowerCase() === "websocket") {
-    return handleWebSocket(req);
-  }
+if (req.headers.get("Upgrade")?.toLowerCase() === "websocket") {
+  const { socket, response } = Deno.upgradeWebSocket(req);
+  socket.onopen = () => {
+    socket.send(JSON.stringify({
+      type: "server_ready",
+      sessionId: "fake-session"
+    }));
+  };
+  socket.onmessage = (e) => {
+    socket.send(JSON.stringify({ type: "ack" }));
+  };
+  socket.onclose = () => {};
+  return response;
+}
 
   if (url.pathname.endsWith("/chat/completions") ||
       url.pathname.endsWith("/embeddings") ||
