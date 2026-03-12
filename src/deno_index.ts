@@ -88,7 +88,7 @@ async function handleRequest(req: Request): Promise<Response> {
   const url = new URL(req.url);
   console.log('Request URL:', req.url);
 
-  // WebSocket 处理
+// WebSocket 处理
 if (req.headers.get("Upgrade")?.toLowerCase() === "websocket") {
   const { socket, response } = Deno.upgradeWebSocket(req);
   socket.onopen = () => {
@@ -97,7 +97,36 @@ if (req.headers.get("Upgrade")?.toLowerCase() === "websocket") {
       sessionId: "fake-session"
     }));
   };
-  socket.onmessage = (e) => {
+  socket.onmessage = async (e) => {
+    console.log("Received message from client:", e.data);
+    const data = JSON.parse(e.data);
+    if (data.clientContent?.turns) {
+      const userInput = data.clientContent.turns[0].parts[0].text;
+      const apiKey = Deno.env.get("GOOGLE_API_KEY");
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: userInput }] }]
+            })
+          }
+        );
+        const result = await response.json();
+        const aiResponse = result.candidates[0].content.parts[0].text;
+        socket.send(JSON.stringify({
+          type: "content",
+          parts: [{ text: aiResponse }]
+        }));
+      } catch (error) {
+        socket.send(JSON.stringify({
+          type: "content",
+          parts: [{ text: "❌ Error: " + error.message }]
+        }));
+      }
+    }
     socket.send(JSON.stringify({ type: "ack" }));
   };
   socket.onclose = () => {};
