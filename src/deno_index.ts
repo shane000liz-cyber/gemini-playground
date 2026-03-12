@@ -88,7 +88,7 @@ async function handleRequest(req: Request): Promise<Response> {
   const url = new URL(req.url);
   console.log('Request URL:', req.url);
 
-   WebSocket 处理
+  // WebSocket 处理
   if (req.headers.get("Upgrade")?.toLowerCase() === "websocket") {
     return handleWebSocket(req);
   }
